@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>
+          Music Equalizer of wavesurfer.js 
+        </title>
+        <style>
+        body{
+  font: 15px helvetica,arial,freesans,clean,sans-serif;
+  margin: 20px auto;    
+  text-align: center;
+  background-color: rgb(69, 87, 88);
+}
+#waveform{
+  background: rgba(0,0,0,0.8);
+  margin-bottom: 10px;
+}
+button{
+  background: #eee;
+  border: 1px solid #ddd;
+  border-bottom: 4px solid #ccc;
+  cursor: pointer;
+  font-size: 20px;
+  margin-top: 10px;
+  padding: 10px;
+}
+button:active{
+  outline: none;
+  border-top: 4px solid #eee;
+  border-bottom: 2px solid #777;
+}
+button:focus{
+  outline: none;
+}
+.volbox{
+  margin-top: 20px;
+}
+
+    </style>
+    </head>
+    <body>
+    <!--div -->
+    <div id = "audio-spectrum"></div>
+
+    <div class="container" style="text-align: center">
+       <button onclick="Spectrum.playPause()">
+         <i class="glyphicon glyphicon-play"></i>
+         ⏯
+    </button>
+
+
+    <button onclick="LoadFile()">Load</button>
+
+
+    <div class="volbox">
+        Volume:<br/>
+        <input id="volume" type="range" min="0" max="1" value="1" step="0.1">
+    </div>
+    <div id="equalizer" style="margin-top: 10px"></div>
+    </div>
+
+ 
+
+    
+    <!--load wavesurfer.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/1.3.7/wavesurfer.min.js"></script>
+
+
+    <script>
+        
+    //Choose file for read
+    let LoadFile = () => {
+    let load = document.createElement("input");
+    load.type = "file"
+    load.accept = ".mp3,.wav,.flac"
+ 
+    load.onchange = event => {
+        const files = load.files
+        console.log(URL.createObjectURL(files[0]))
+        Spectrum.load((URL.createObjectURL(files[0])))
+        
+    };
+
+    load.click();
+
+    
+}
+        // a instance of wave surfer
+        var Spectrum = WaveSurfer.create({container: '#audio-spectrum',progressColor: "#03a9f4"});
+          
+        //add a listener to enable play button when ready
+        Spectrum.on('ready',function(){
+          
+          // 10 EQ filter
+          var EQ = [
+              {
+                f:32,
+                type: 'lowshelf'
+              },{
+                f:64,
+                type: 'peaking'
+              },{
+                f:125,
+                type: 'peaking'
+              },{
+                f:250,
+                type: 'peaking'
+              },{
+                f:500,
+                type: 'peaking'
+              },{
+                f:1000,
+                type: 'peaking'
+              },{
+                f:2000,
+                type: 'peaking'
+              },{
+                f:4000,
+                type: 'peaking'
+              },{
+                f:8000,
+                type: 'peaking'
+              },{
+                f:16000,
+                type: 'highshelf'
+              }
+          ];
+
+          //create fliters
+          var filters = EQ.map(function(band){
+              var filter = Spectrum.backend.ac.createBiquadFilter();
+              filter.type = band.type;
+              filter.gain.value = 0;
+              filter.Q.value = 1;
+              filter.frequency.value = band.f;
+              return filter;
+
+          });
+
+          //connect filters to spectrum
+          Spectrum.backend.setFilters(filters);
+
+
+
+            //volume set
+            Spectrum.setVolume(0.1);
+            document.querySelector('#volume').value = Spectrum.backend.getVolume();
+
+
+
+            //Bind filters to vertical slider
+            var container = document.querySelector('#equalizer');
+            filters.forEach(function(filter){
+                var input = document.createElement('input');
+                Spectrum.util.extend(input,{
+                    type:'range',
+                    min:-40,
+                    max:40,
+                    value:0,
+                    title:filter.frequency.value
+                });
+                input.style.display = 'inline-block';
+                input.setAttribute('orient','vertical');
+                Spectrum.drawer.style(input,{
+                  'webkitAppearance': 'slider-vertical',
+                  width:'50px',
+                  height:'150px'
+                });
+                container.appendChild(input);
+                
+                
+                //filter adjust
+
+                var onChange = function(e){
+                  filter.gain.value = ~~e.target.value;
+                }
+                input.addEventListener('input',onChange);
+                input.addEventListener('change',onChange);
+                
+            });
+
+            //volume adjust
+
+            var volumeInput = document.querySelector('#volume');
+            var onChangeVolume = function (e) {
+            Spectrum.setVolume(e.target.value);
+            console.log(e.target.value);
+
+        };
+
+
+        volumeInput.addEventListener('input', onChangeVolume);
+        volumeInput.addEventListener('change', onChangeVolume);
+
+
+        });
+
+        //window resize
+
+        window.addEventListener("resize",function(){
+
+            var currentProgress = Spectrum.getCurrentTime() / Spectrum.getDuration();
+
+            Spectrum.empty();
+            Spectrum.drawBuffer();
+            Spectrum.seekTo(currentProgress);
+
+
+        },false);
+
+    </script>
+ </body>
+</html>
+
+
+
